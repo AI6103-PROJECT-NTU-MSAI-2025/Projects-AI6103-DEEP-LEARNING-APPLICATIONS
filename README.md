@@ -21,8 +21,6 @@ Project weighting: **40%** (Presentation:**10%**, report: **30%**)
 (e.g., ResNet-18, Transformer), and experiment with 4-5 different regularization
 techniques. Analyze the differences in the result created by these techniques. <font color=red>[Lower grade caused by Lower novelty and difficulty]</font>
 
-<font color=gray> Content above excerpted from course slides: Topic 0. Introduction</font>
-
 ### 3. Requirements
 - AAAI format
 - <font color=red>Maximum 6 pages</font>, excluding references
@@ -30,10 +28,11 @@ techniques. Analyze the differences in the result created by these techniques. <
 - 85% of a research essay should be your own words
 - generally no more than 15% of the total words should be quotes or paraphrases
 
-
 ### 4. Project DDLs
 **Groupings for Final Project Due on <font color=red>8 Oct</font>**  
-**Final project report and video due on <font color=red>24 Nov</font>**
+**Final project report and video due on <font color=red>24 Nov</font>**  
+
+<font color=gray> Content above excerpted from course slides: Topic 0. Introduction</font>  
 
 ###  Tips
 1. It is recommended that everyone use the same version of Python and packages (especially pytorch)
