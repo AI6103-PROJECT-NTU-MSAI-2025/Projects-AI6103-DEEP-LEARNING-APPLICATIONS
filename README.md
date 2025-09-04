@@ -6,7 +6,7 @@
 ## Basic INFO about the project:
 
 ### 1. Scoring Criteria  
-The project contributes to **40%** of the total coursework assessment. Presentation:**10%**, report: **30%**
+Project weighting: **40%** (Presentation:**10%**, report: **30%**)
 >- Novelty and Difficulty ``(20 pts)``
 >- Technical Approach: Correctness. Elegance. Good results. `` (10pts)  ``
 >- Writing: Correct and idiomatic English. Clarity. Conciseness (as opposed to verbose and low information content per word)``  (10 pts)`` .
