@@ -23,7 +23,7 @@ techniques. Analyze the differences in the result created by these techniques. <
 
 <font color=gray> Content above excerpted from course slides: Topic 0. Introduction</font>
 
-### 5. Requirements
+### 3. Requirements
 - AAAI format
 - <font color=red>Maximum 6 pages</font>, excluding references
 - LaTex preferred. Word acceptable
