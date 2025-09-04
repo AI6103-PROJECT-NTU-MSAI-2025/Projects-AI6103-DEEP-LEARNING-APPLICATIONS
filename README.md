@@ -23,7 +23,15 @@ techniques. Analyze the differences in the result created by these techniques. <
 
 <font color=gray> Content above excerpted from course slides: Topic 0. Introduction</font>
 
-### 3. Project DDLs
+### 5. Requirements
+- AAAI format
+- <font color=red>Maximum 6 pages</font>, excluding references
+- LaTex preferred. Word acceptable
+- 85% of a research essay should be your own words
+- generally no more than 15% of the total words should be quotes or paraphrases
+
+
+### 4. Project DDLs
 **Groupings for Final Project Due on <font color=red>8 Oct</font>**  
 **Final project report and video due on <font color=red>24 Nov</font>**
 
