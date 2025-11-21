@@ -170,11 +170,6 @@ class ItemEmbeddingWithText(EmbeddingModule):
             elif "_gate_layer" in name:
                 print(f"Initialize {name} as truncated normal: {params.data.size()} params")
                 truncated_normal(params.data, mean=0.0, std=0.02)
-                if 'weight' in name:
-                    truncated_normal(params.data, mean=0.0, std=0.02)
-                elif 'bias' in name:
-                    # 确保门控的初始输出接近 0，使 Sigmoid(Output) 接近 0.5
-                    torch.nn.init.constant_(params.data, 0.0)
 
     def get_item_embeddings(self, item_ids: torch.Tensor) -> torch.Tensor:
         """

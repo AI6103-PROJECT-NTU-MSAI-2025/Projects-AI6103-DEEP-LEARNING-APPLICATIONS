@@ -433,7 +433,7 @@ def train_fn(
                     l2_norm=item_l2_norm,
                     l2_norm_eps=l2_norm_eps, 
                 ).to(model.device)
-                
+
 
             ar_mask = supervision_ids[:, 1:] != 0
             loss, aux_losses = ar_loss(
