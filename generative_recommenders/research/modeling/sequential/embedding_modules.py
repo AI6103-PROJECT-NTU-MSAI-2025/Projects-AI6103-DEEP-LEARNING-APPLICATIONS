@@ -151,6 +151,13 @@ class ItemEmbeddingWithText(EmbeddingModule):
         #Gated
         elif self._fusion_mode == "gated":
             self._gate_layer = torch.nn.Linear(2 * item_embedding_dim, item_embedding_dim)
+        #RES MLP
+        elif self._fusion_mode == "resnet_mlp":
+            # 这里的 MLP 计算的是残差 R
+            self._residual_mlp = torch.nn.Sequential(
+                torch.nn.Linear(2 * item_embedding_dim, item_embedding_dim),
+                torch.nn.ReLU(),
+            )
             
         self.reset_params()
 
@@ -158,18 +165,24 @@ class ItemEmbeddingWithText(EmbeddingModule):
         return f"text_emb_d{self._item_embedding_dim}"
 
     def reset_params(self) -> None:
+        FUSION_STD = 0.005
         for name, params in self.named_parameters():
             if "_item_emb" in name or "_text_projection" in name:
                 print(f"Initialize {name} as truncated normal: {params.data.size()} params")
                 truncated_normal(params.data, mean=0.0, std=0.02)
-                # (concat_mlp)
-            elif "_concat_mlp" in name:
-                print(f"Initialize {name} as truncated normal: {params.data.size()} params")
-                truncated_normal(params.data, mean=0.0, std=0.02)
-                # (gated)
+            # (concat_mlp)
+            if "_concat_mlp" in name or "_residual_mlp" in name: # 包含新残差层
+                if 'weight' in name:
+                    truncated_normal(params.data, mean=0.0, std=FUSION_STD) 
+                elif 'bias' in name:
+                    torch.nn.init.constant_(params.data, 0.0)
             elif "_gate_layer" in name:
-                print(f"Initialize {name} as truncated normal: {params.data.size()} params")
-                truncated_normal(params.data, mean=0.0, std=0.02)
+                if 'weight' in name:
+                    truncated_normal(params.data, mean=0.0, std=FUSION_STD)
+                elif 'bias' in name:
+                    # 关键修复：设为 1.0，使 Sigmoid(1.0) ~ 0.73，初始时偏向 ID 嵌入
+                    torch.nn.init.constant_(params.data, 1)
+            
 
     def get_item_embeddings(self, item_ids: torch.Tensor) -> torch.Tensor:
         """
@@ -191,6 +204,7 @@ class ItemEmbeddingWithText(EmbeddingModule):
         if self._fusion_mode == "sum":
             # Summation Fusion
             fused_embeddings = item_embeds + projected_text_embeds
+            
         elif self._fusion_mode == "concat_mlp":
             # Concatenation and Projection, mlp fusion
             combined = torch.cat([item_embeds, projected_text_embeds], dim=-1)
@@ -202,9 +216,22 @@ class ItemEmbeddingWithText(EmbeddingModule):
             alpha = torch.sigmoid(self._gate_layer(combined))
             # gated : alpha * ID_Embed + (1 - alpha) * Text_Embed
             fused_embeddings = alpha * item_embeds + (1 - alpha) * projected_text_embeds
+        # New: ResNet Residual MLP Fusion
+        elif self._fusion_mode == "resnet_mlp":
+            # 1. 拼接输入
+            combined = torch.cat([item_embeds, projected_text_embeds], dim=-1)
+            # 2. 计算残差 R
+            residual = self._residual_mlp(combined) 
+            # 3. 残差连接：E_Fused = E_ID + R
+            fused_embeddings = item_embeds + residual
+
+        elif self._fusion_mode == "no_fusion":
+            fused_embeddings = item_embeds
+            
         else:
             raise ValueError(
                 f"Unknown fusion mode: {self._fusion_mode}. Supported modes are 'sum', 'concat_mlp', 'gated'.")
+            
         return fused_embeddings
 
     @property

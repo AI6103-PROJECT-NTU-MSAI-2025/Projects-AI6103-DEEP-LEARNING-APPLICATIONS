@@ -132,6 +132,10 @@ class LocalTextNegativesSampler(NegativesSampler):
         all_item_ids: List[int],
         l2_norm: bool,
         l2_norm_eps: float,
+        fusion_mode: str = 'sum',
+        concat_mlp: torch.nn.Sequential = None,
+        gate_layer: torch.nn.Linear = None,
+        residual_mlp: torch.nn.Sequential = None,
     ) -> None:
         super().__init__(l2_norm=l2_norm, l2_norm_eps=l2_norm_eps)
 
@@ -139,7 +143,18 @@ class LocalTextNegativesSampler(NegativesSampler):
         self._item_emb: torch.nn.Embedding = item_emb
         self._text_emb: torch.Tensor = text_emb  # (num_items, text_embedding_dim)
         self._text_projection: torch.nn.Linear = text_projection
+        self._fusion_mode: str = fusion_mode
 
+        if fusion_mode == "concat_mlp":
+             if concat_mlp is None: raise ValueError("concat_mlp must be provided for 'concat_mlp' mode.")
+             self._concat_mlp = concat_mlp
+        elif fusion_mode == "gated":
+             if gate_layer is None: raise ValueError("gate_layer must be provided for 'gated' mode.")
+             self._gate_layer = gate_layer
+        elif fusion_mode == "resnet_mlp":
+             if residual_mlp is None: raise ValueError("residual_mlp must be provided for 'resnet_mlp' mode.")
+             self._residual_mlp = residual_mlp
+        
         device = item_emb.weight.device
         self._text_emb = self._text_emb.to(device)
         self._text_projection = self._text_projection.to(device)
@@ -165,9 +180,45 @@ class LocalTextNegativesSampler(NegativesSampler):
         item_embeds = self._item_emb(item_ids)  # Learned embeddings
         text_embeds = self._text_emb[item_ids]  # Precomputed textual embeddings
         projected_text_embeds = self._text_projection(text_embeds)  # Projected text embeddings
-        
-        return item_embeds + projected_text_embeds  # Fusion of both embeddings
 
+        fused_embeddings: torch.Tensor
+        
+        if self._fusion_mode == "sum":
+            # Summation Fusion
+            fused_embeddings = item_embeds + projected_text_embeds
+            
+        elif self._fusion_mode == "concat_mlp":
+            # Concatenation and Projection, mlp fusion
+            combined = torch.cat([item_embeds, projected_text_embeds], dim=-1)
+            fused_embeddings = self._concat_mlp(combined)
+            
+        elif self._fusion_mode == "gated":
+            # Gated Fusion
+            combined = torch.cat([item_embeds, projected_text_embeds], dim=-1)
+            # alpha: alpha = sigmoid(Linear(concat))
+            alpha = torch.sigmoid(self._gate_layer(combined))
+            # gated : alpha * ID_Embed + (1 - alpha) * Text_Embed
+            fused_embeddings = alpha * item_embeds + (1 - alpha) * projected_text_embeds
+            
+        elif self._fusion_mode == "resnet_mlp":
+            # ResNet Residual MLP Fusion
+            # 1. 拼接输入
+            combined = torch.cat([item_embeds, projected_text_embeds], dim=-1)
+            # 2. 计算残差 R
+            residual = self._residual_mlp(combined) 
+            # 3. 残差连接：E_Fused = E_ID + R
+            fused_embeddings = item_embeds + residual
+
+        elif self._fusion_mode == "no_fusion":
+             fused_embeddings = item_embeds
+             
+        else:
+            raise ValueError(
+                f"Unknown fusion mode: {self._fusion_mode}. Supported modes are 'sum', 'concat_mlp', 'gated', 'resnet_mlp', 'no_fusion'."
+            )
+            
+        return fused_embeddings
+        
     def forward(
         self,
         positive_ids: torch.Tensor,

@@ -115,8 +115,6 @@ class AmazonDataProcessor(DataProcessor):
             expected_num_unique_items=expected_num_unique_items,
             expected_max_item_id=None,
         )
-        # Pre-process the dataset in Amazon format.
-
         self._download_path = download_path
         self._saved_name = saved_name
         self._prefix = prefix
@@ -235,12 +233,11 @@ class AmazonDataProcessor(DataProcessor):
         ).map(clean_metadata, num_proc=16)
         return dict(zip(meta_dataset["parent_asin"], meta_dataset["cleaned_metadata"]))
 
-
 def get_common_preprocessors(text_embedding_model: str) -> Dict[
     str,
     Union[AmazonDataProcessor],
 ]:
-    ## this is the process to get target embedding that would integrate into the original HSTU
+    #download the review data
     amzn23_office_dp = AmazonDataProcessor(
         'https://mcauleylab.ucsd.edu/public_datasets/data/amazon_2023/benchmark/5core/rating_only/Office_Products.csv.gz',
         'tmp/Office_Products.csv.gz',
@@ -248,6 +245,8 @@ def get_common_preprocessors(text_embedding_model: str) -> Dict[
         text_embedding_model=text_embedding_model,
         expected_num_unique_items=77551,
     )
+
+
     amzn23_game_dp = AmazonDataProcessor(
         'https://mcauleylab.ucsd.edu/public_datasets/data/amazon_2023/benchmark/5core/rating_only/Video_Games.csv.gz',
         'tmp/Video_Games.csv',
@@ -261,7 +260,8 @@ def get_common_preprocessors(text_embedding_model: str) -> Dict[
         prefix="amzn23_music",
         text_embedding_model=text_embedding_model,
         expected_num_unique_items=24587,
-    )
+    ) 
+
     return {"amzn23_office": amzn23_office_dp
             ,"amzn23_game": amzn23_game_dp
             ,"amzn23_music": amzn23_music_dp}

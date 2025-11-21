@@ -294,6 +294,10 @@ def train_fn(
             all_item_ids=dataset.all_item_ids,
             l2_norm=item_l2_norm,
             l2_norm_eps=l2_norm_eps, 
+            fusion_mode=fusion_mode,
+            concat_mlp=getattr(model._embedding_module, '_concat_mlp', None),
+            gate_layer=getattr(model._embedding_module, '_gate_layer', None),
+            residual_mlp=getattr(model._embedding_module, '_residual_mlp', None),
         )
     else:
         raise ValueError(f"Unrecognized sampling strategy {sampling_strategy}.")
@@ -306,7 +310,10 @@ def train_fn(
     model = model.to(device)
     ar_loss = ar_loss.to(device)
     negatives_sampler = negatives_sampler.to(device)
-    model = DDP(model, device_ids=[rank], broadcast_buffers=False)
+    model = DDP(model, 
+                device_ids=[rank], 
+                broadcast_buffers=False,
+                find_unused_parameters=True)
 
     # TODO: wrap in create_optimizer.
     opt = torch.optim.AdamW(
@@ -432,8 +439,11 @@ def train_fn(
                     all_item_ids=dataset.all_item_ids,
                     l2_norm=item_l2_norm,
                     l2_norm_eps=l2_norm_eps, 
+                    fusion_mode=fusion_mode,
+                    concat_mlp=getattr(model.module._embedding_module, '_concat_mlp', None),
+                    gate_layer=getattr(model.module._embedding_module, '_gate_layer', None),
+                    residual_mlp=getattr(model.module._embedding_module, '_residual_mlp', None),
                 ).to(model.device)
-
 
             ar_mask = supervision_ids[:, 1:] != 0
             loss, aux_losses = ar_loss(
