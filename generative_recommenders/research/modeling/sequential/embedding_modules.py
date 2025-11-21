@@ -230,7 +230,7 @@ class ItemEmbeddingWithText(EmbeddingModule):
             
         else:
             raise ValueError(
-                f"Unknown fusion mode: {self._fusion_mode}. Supported modes are 'sum', 'concat_mlp', 'gated'.")
+                f"Unknown fusion mode: {self._fusion_mode}. Supported modes are 'sum', 'concat_mlp', 'gated','resnet_mlp','no_fusion'.")
             
         return fused_embeddings
 
