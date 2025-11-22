@@ -312,8 +312,8 @@ def train_fn(
             cross_v_layer = getattr(model._embedding_module, '_cross_v_layer', None),
             final_fusion_mlp = getattr(model._embedding_module, '_final_fusion_mlp', None),
             attention_dim = getattr(model._embedding_module, 'd_att', None),
-            weighted_sum_alpha=getattr(model.module._embedding_module, 'weighted_sum_alpha', None),
-            use_sigmoid_alpha=getattr(model.module._embedding_module, '_use_sigmoid_alpha', None)
+            weighted_sum_alpha=getattr(model._embedding_module, 'weighted_sum_alpha', None),
+            use_sigmoid_alpha=getattr(model._embedding_module, '_use_sigmoid_alpha', None)
         )
     else:
         raise ValueError(f"Unrecognized sampling strategy {sampling_strategy}.")
@@ -596,6 +596,7 @@ def train_fn(
                 },
                 f"./ckpts/{model_desc}_ep{epoch}",
             )
+            logging.info(f"model saved successfully")
 
         logging.info(
             f"rank {rank}: eval @ epoch {epoch} in {time.time() - eval_start_time:.2f}s: "

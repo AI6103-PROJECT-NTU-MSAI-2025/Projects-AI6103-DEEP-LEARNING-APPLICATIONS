@@ -179,6 +179,9 @@ class ItemEmbeddingWithText(EmbeddingModule):
         elif self._fusion_mode == "weighted_sum":
             self.weighted_sum_alpha = torch.nn.Parameter(torch.tensor(0.5, dtype=torch.float32))
             self._use_sigmoid_alpha = use_sigmoid_alpha
+            # print("*"*10)
+            # print(f"initializing weighted_sum with weighted_sum_alpha:{self.weighted_sum_alpha}, _use_sigmoid_alpha:{self._use_sigmoid_alpha}")
+            # print("*"*10)
             
         self.reset_params()
 
@@ -241,7 +244,9 @@ class ItemEmbeddingWithText(EmbeddingModule):
         elif self._fusion_mode == "weighted_sum":
             if self._use_sigmoid_alpha:
                 w = torch.sigmoid(self.weighted_sum_alpha)
+                # print(f"embedding: using sigmoid weighted sum, w:{w}")
                 return w * item_embeds + (1.0 - w) * projected_text_embeds
+                
             return self.weighted_sum_alpha * item_embeds + (1.0 - self.weighted_sum_alpha) * projected_text_embeds
             
         elif self._fusion_mode == "concat_mlp":

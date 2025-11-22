@@ -38,10 +38,18 @@ def mp_train_fn(
 ) -> None:
     # this is the training function
 
+    root = logging.getLogger()
+    if root.handlers:
+        for handler in root.handlers[:]:
+            root.removeHandler(handler)
+    
+    # 使用通用的格式
     logging.basicConfig(
         level=logging.INFO,
-        format='%(asctime)s - Rank %(rank)d - %(levelname)s - %(message)s',
-        stream=sys.stdout)
+        format='%(asctime)s - %(levelname)s - %(message)s', 
+        stream=sys.stdout,
+        force=True  # 确保覆盖之前的配置
+    )
     # Explicitly reconfigure logging to ensure it works correctly in child processes.
 
     if gin_config_file is not None:

@@ -18,6 +18,8 @@ train_fn.user_embedding_norm = "l2_norm"
 train_fn.item_embedding_dim = 64
 train_fn.attention_dim = 64
 
+train_fn.save_ckpt_every_n = 1
+
 hstu_encoder.num_blocks = 4
 hstu_encoder.num_heads = 4
 hstu_encoder.dv = 16

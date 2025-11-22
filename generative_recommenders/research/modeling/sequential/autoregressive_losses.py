@@ -289,9 +289,10 @@ class LocalTextNegativesSampler(NegativesSampler):
         elif self._fusion_mode == "weighted_sum":
             if self._use_sigmoid_alpha:
                 w = torch.sigmoid(self.weighted_sum_alpha)
-                fused_embeddings = w * item_embeds + (1.0 - w) * text_embeds
+                fused_embeddings = w * item_embeds + (1.0 - w) * projected_text_embeds
+                # print(f"negative sampler: using sigmoid weighted sum, w:{w}")
             else:
-                fused_embeddings = self.weighted_sum_alpha * item_embeds + (1.0 - self.weighted_sum_alpha) * text_embeds
+                fused_embeddings = self.weighted_sum_alpha * item_embeds + (1.0 - self.weighted_sum_alpha) * projected_text_embeds
 
         elif self._fusion_mode == "no_fusion":
              fused_embeddings = item_embeds
