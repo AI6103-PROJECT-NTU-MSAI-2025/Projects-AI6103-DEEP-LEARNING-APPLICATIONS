@@ -118,6 +118,7 @@ class ItemEmbeddingWithText(EmbeddingModule):
         text_embedding_dim: int,
         text_embeddings: torch.Tensor,
         fusion_mode: str = "sum",
+        attention_dim: int = None, # dimension for D_att
     ) -> None:
         """
         Embedding module that combines learned item embeddings with precomputed textual embeddings.
@@ -153,9 +154,25 @@ class ItemEmbeddingWithText(EmbeddingModule):
             self._gate_layer = torch.nn.Linear(2 * item_embedding_dim, item_embedding_dim)
         #RES MLP
         elif self._fusion_mode == "resnet_mlp":
-            # 这里的 MLP 计算的是残差 R
+            # R
             self._residual_mlp = torch.nn.Sequential(
                 torch.nn.Linear(2 * item_embedding_dim, item_embedding_dim),
+                torch.nn.ReLU(),
+            )
+        elif self._fusion_mode == "bi_attention":
+            if attention_dim is None: 
+                 raise ValueError("attention_dim must be provided for 'bi_attention' mode.")
+            
+            self.d_att = attention_dim
+            # Q, K, V 
+            # input：item_embedding_dim (D_emb)
+            # output：attention_dim (D_att)
+            self._cross_q_layer = torch.nn.Linear(item_embedding_dim, self.d_att)
+            self._cross_k_layer = torch.nn.Linear(item_embedding_dim, self.d_att)
+            self._cross_v_layer = torch.nn.Linear(item_embedding_dim, self.d_att)
+            # final fusion layer (2 * D_att) -> item_embedding_dim (D_emb)
+            self._final_fusion_mlp = torch.nn.Sequential(
+                torch.nn.Linear(2 * self.d_att, item_embedding_dim),
                 torch.nn.ReLU(),
             )
             
@@ -176,12 +193,20 @@ class ItemEmbeddingWithText(EmbeddingModule):
                     truncated_normal(params.data, mean=0.0, std=FUSION_STD) 
                 elif 'bias' in name:
                     torch.nn.init.constant_(params.data, 0.0)
-            elif "_gate_layer" in name:
+            if "_gate_layer" in name:
                 if 'weight' in name:
                     truncated_normal(params.data, mean=0.0, std=FUSION_STD)
                 elif 'bias' in name:
                     # 关键修复：设为 1.0，使 Sigmoid(1.0) ~ 0.73，初始时偏向 ID 嵌入
                     torch.nn.init.constant_(params.data, 1)
+                    
+            if "_cross_q_layer" in name or "_cross_k_layer" in name or "_cross_v_layer" in name or "_final_fusion_mlp" in name:
+                if 'weight' in name:
+                    # Q, K, V  Final MLP init W 
+                    truncated_normal(params.data, mean=0.0, std=FUSION_STD) 
+                elif 'bias' in name:
+                    # Q, K, V  Final MLP init bais
+                    torch.nn.init.constant_(params.data, 0.0)
             
 
     def get_item_embeddings(self, item_ids: torch.Tensor) -> torch.Tensor:
@@ -225,12 +250,67 @@ class ItemEmbeddingWithText(EmbeddingModule):
             # 3. 残差连接：E_Fused = E_ID + R
             fused_embeddings = item_embeds + residual
 
+        elif self._fusion_mode == "bi_attention":
+
+            # Shapes: (B, L, D_emb) -> (B, L, D_att)
+            Q_id = self._cross_q_layer(item_embeds)
+            K_text = self._cross_k_layer(projected_text_embeds)
+            V_text = self._cross_v_layer(projected_text_embeds)
+            
+            Q_text = self._cross_q_layer(projected_text_embeds)
+            K_id = self._cross_k_layer(item_embeds)
+            V_id = self._cross_v_layer(item_embeds)
+            
+            # Store original B, L, D_att for reshaping
+            B, L, D_att = Q_id.shape
+            
+            # 2. Flatten B and L dimensions for item-wise fusion
+            # Shapes: (B, L, D_att) -> (B*L, D_att)
+            BL = B * L
+            Q_id_flat = Q_id.reshape(BL, D_att)
+            K_text_flat = K_text.reshape(BL, D_att)
+            V_text_flat = V_text.reshape(BL, D_att)
+            
+            Q_text_flat = Q_text.reshape(BL, D_att)
+            K_id_flat = K_id.reshape(BL, D_att)
+            V_id_flat = V_id.reshape(BL, D_att)
+            
+            # --- direction 1: E_ID -> E_Text (ID enhanced) ---
+            # Score (Dot Product): (B*L, D_att) * (B*L, D_att) -> (B*L)
+            dot_product_score_id_to_text = torch.sum(Q_id_flat * K_text_flat, dim=-1)  
+            # Unsqueeze to add Sequence and Query dimensions for Attention ops: (B*L) -> (B*L, 1, 1)
+            scores_id_to_text = dot_product_score_id_to_text.unsqueeze(1).unsqueeze(1) 
+            # Softmax: (B*L, 1, 1)
+            alpha_id_to_text = torch.softmax(scores_id_to_text / (self.d_att ** 0.5), dim=-1)
+            # V unsqueeze: (B*L, D_att) -> (B*L, 1, D_att)
+            V_text_flat_e = V_text_flat.unsqueeze(1)
+            # Attention-Value Weighting: (B*L, 1, 1) @ (B*L, 1, D_att) -> (B*L, 1, D_att)
+            # Squeeze: (B*L, 1, D_att) -> (B*L, D_att)
+            E_ID_enhanced_flat = torch.matmul(alpha_id_to_text, V_text_flat_e).squeeze(1) 
+            
+            # --- direction 2: E_Text -> E_ID (Text enhanced) ---
+            dot_product_score_text_to_id = torch.sum(Q_text_flat * K_id_flat, dim=-1)
+            scores_text_to_id = dot_product_score_text_to_id.unsqueeze(1).unsqueeze(1)
+            alpha_text_to_id = torch.softmax(scores_text_to_id / (self.d_att ** 0.5), dim=-1)
+            V_id_flat_e = V_id_flat.unsqueeze(1)
+            E_Text_enhanced_flat = torch.matmul(alpha_text_to_id, V_id_flat_e).squeeze(1) 
+     
+            # Concatenation: (B*L, D_att) + (B*L, D_att) -> (B*L, 2*D_att)
+            final_combined_flat = torch.cat([E_ID_enhanced_flat, E_Text_enhanced_flat], dim=-1) 
+            
+            # MLP Projection: (B*L, 2*D_att) -> (B*L, D_emb)
+            fused_embeddings_flat = self._final_fusion_mlp(final_combined_flat)
+
+            # Reshape: (B*L, D_emb) -> (B, L, D_emb)
+            fused_embeddings = fused_embeddings_flat.reshape(B, L, -1)
+            #print('emb:', fused_embeddings.shape)
+
         elif self._fusion_mode == "no_fusion":
             fused_embeddings = item_embeds
             
         else:
             raise ValueError(
-                f"Unknown fusion mode: {self._fusion_mode}. Supported modes are 'sum', 'concat_mlp', 'gated','resnet_mlp','no_fusion'.")
+                f"Unknown fusion mode: {self._fusion_mode}. Supported modes are 'sum', 'concat_mlp', 'gated'.")
             
         return fused_embeddings
 

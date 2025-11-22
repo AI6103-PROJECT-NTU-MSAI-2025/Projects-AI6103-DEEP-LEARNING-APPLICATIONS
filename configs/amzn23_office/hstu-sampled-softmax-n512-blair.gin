@@ -10,11 +10,12 @@ train_fn.embedding_module_type = "local_and_text"
 train_fn.feat_prep = "LearnablePositionalEmbeddingWithTextPreprocessor"
 train_fn.sampling_strategy = "local_with_text"
 train_fn.text_embedding_model = "blair"
-train_fn.fusion_mode = "gated"
+train_fn.fusion_mode = "bi_attention"
 
 train_fn.dropout_rate = 0.5
 train_fn.user_embedding_norm = "l2_norm"
 train_fn.item_embedding_dim = 64
+train_fn.attention_dim = 64
 
 hstu_encoder.num_blocks = 4
 hstu_encoder.num_heads = 4
