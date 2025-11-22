@@ -22,6 +22,7 @@ from typing import Dict, Optional
 import gin
 import torch
 import torch.distributed as dist
+import math
 
 from generative_recommenders.research.data.eval import (
     _avg, # Function to average metrics across distributed processes
@@ -137,6 +138,7 @@ def train_fn(
     fusion_mode: str = "sum", # the way you want to concat two embeddings ['sum','concat_mlp','gated']
     attention_dim: Optional[int] = 240, #<- used for bi-attn
     use_sigmoid_alpha: bool = True,
+    lr_schedule: str = "constant",
     random_seed: int = 42,
 ) -> None:
     # to enable more deterministic results.
@@ -172,6 +174,15 @@ def train_fn(
         shuffle=True,  # needed for partial eval
         drop_last=world_size > 1,
     )
+
+    try:
+        steps_per_epoch = len(train_data_loader)
+    except TypeError:
+        # 如果 loader 不支持 len()，需手动指定或根据 dataset 大小估算，这里假设能获取
+        steps_per_epoch = len(dataset.train_dataset) // local_batch_size
+
+    total_steps = steps_per_epoch * num_epochs
+    logging.info(f"Total training steps: {total_steps}, Warmup steps: {num_warmup_steps}")
 
     ############## Model Components ##############
     model_debug_str = main_module
@@ -491,12 +502,24 @@ def train_fn(
 
             # Optional linear warmup.
             if batch_id < num_warmup_steps:
-                lr_scalar = min(1.0, float(batch_id + 1) / num_warmup_steps)
-                for pg in opt.param_groups:
-                    pg["lr"] = lr_scalar * learning_rate
-                lr = lr_scalar * learning_rate
+                # 线性预热 (Linear Warmup)
+                lr_scalar = min(1.0, float(batch_id + 1) / float(max(1, num_warmup_steps)))
             else:
-                lr = learning_rate
+                if lr_schedule == "cosine":
+                    # 余弦退火 (Cosine Decay)
+                    # 进度从 0.0 到 1.0
+                    progress = float(batch_id - num_warmup_steps) / float(max(1, total_steps - num_warmup_steps))
+                    progress = min(1.0, progress)  # 防止溢出
+                    lr_scalar = 0.5 * (1.0 + math.cos(math.pi * progress))
+                else:
+                    # 默认常数策略 (Constant after warmup)
+                    lr_scalar = 1.0
+
+                # 应用学习率
+            current_lr = lr_scalar * learning_rate
+            for pg in opt.param_groups:
+                pg["lr"] = current_lr
+            lr = current_lr
 
             if (batch_id % eval_interval) == 0:
                 logging.info(

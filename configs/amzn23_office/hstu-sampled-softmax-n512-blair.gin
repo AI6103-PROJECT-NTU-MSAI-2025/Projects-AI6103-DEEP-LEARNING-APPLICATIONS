@@ -31,6 +31,7 @@ train_fn.num_epochs = 101
 train_fn.learning_rate = 1e-3
 train_fn.weight_decay = 1e-3
 train_fn.num_warmup_steps = 100
+train_fn.lr_schedule = "cosine"
 
 train_fn.interaction_module_type = "DotProduct"
 train_fn.top_k_method = "MIPSBruteForceTopK"
