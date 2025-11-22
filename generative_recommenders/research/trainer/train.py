@@ -135,7 +135,6 @@ def train_fn(
     feat_prep: str = "LearnablePositionalEmbeddingInputFeaturesPreprocessor",
     text_embedding_model: str = None, # <- Here is the text embedding model mixed with the original HSTU
     fusion_mode: str = "sum", # the way you want to concat two embeddings ['sum','concat_mlp','gated']
-    attention_dim: Optional[int] = 240, #<- used for bi-attn
     random_seed: int = 42,
 ) -> None:
     # to enable more deterministic results.
@@ -183,8 +182,6 @@ def train_fn(
 
     elif embedding_module_type == "local_and_text":
         assert dataset.text_embedding_dictmat is not None, "Text embeddings are missing!"
-
-        current_attention_dim = attention_dim if fusion_mode == "bi_attention" else None
         
         embedding_module: EmbeddingModule = ItemEmbeddingWithText(
             num_items=dataset.max_item_id,
@@ -192,7 +189,6 @@ def train_fn(
             text_embedding_dim=dataset.text_embedding_dictmat.shape[1],
             text_embeddings=dataset.text_embedding_dictmat.to("cuda"),
             fusion_mode=fusion_mode,
-            attention_dim=current_attention_dim,
         )
     else:
         raise ValueError(f"Unknown embedding_module_type {embedding_module_type}")
@@ -305,11 +301,7 @@ def train_fn(
             concat_mlp=getattr(model._embedding_module, '_concat_mlp', None),
             gate_layer=getattr(model._embedding_module, '_gate_layer', None),
             residual_mlp=getattr(model._embedding_module, '_residual_mlp', None),
-            cross_q_layer = getattr(model._embedding_module, '_cross_q_layer', None),
-            cross_k_layer = getattr(model._embedding_module, '_cross_k_layer', None),
-            cross_v_layer = getattr(model._embedding_module, '_cross_v_layer', None),
-            final_fusion_mlp = getattr(model._embedding_module, '_final_fusion_mlp', None),
-            attention_dim = getattr(model._embedding_module, 'd_att', None),
+            alpha_param=getattr(model._embedding_module, '_alpha', None),
         )
     else:
         raise ValueError(f"Unrecognized sampling strategy {sampling_strategy}.")
@@ -455,11 +447,7 @@ def train_fn(
                     concat_mlp=getattr(model.module._embedding_module, '_concat_mlp', None),
                     gate_layer=getattr(model.module._embedding_module, '_gate_layer', None),
                     residual_mlp=getattr(model.module._embedding_module, '_residual_mlp', None),
-                    cross_q_layer = getattr(model.module._embedding_module, '_cross_q_layer', None),
-                    cross_k_layer = getattr(model.module._embedding_module, '_cross_k_layer', None),
-                    cross_v_layer = getattr(model.module._embedding_module, '_cross_v_layer', None),
-                    final_fusion_mlp = getattr(model.module._embedding_module, '_final_fusion_mlp', None),
-                    attention_dim = getattr(model.module._embedding_module, 'd_att', None),
+                    alpha_param=getattr(model.module._embedding_module, '_alpha', None),
                 ).to(model.device)
 
             ar_mask = supervision_ids[:, 1:] != 0
