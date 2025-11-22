@@ -11,7 +11,8 @@ EXP_PATHS = {
     "Sum": "exps/amzn23_office-I50_sum_wd/events.out.tfevents.1763734644.autodl-container-828249b609-a2deb705.36302.0",
     "Gated": "exps/amzn_23_office-I50_gated_wd/events.out.tfevents.1763705763.autodl-container-828249b609-a2deb705.1392.0",
     "Resnet": "exps/amzn_23_office-I50_resnet_wd/events.out.tfevents.1763711526.x1000c0s1b0n1.3606124.0",
-    "FFN": "exps/amzn23_office-I50_concat_mlp_wd/events.out.tfevents.1763753549.I252664a0bd0060187d.13027.0"
+    "FFN": "exps/amzn23_office-I50_concat_mlp_wd/events.out.tfevents.1763753549.I252664a0bd0060187d.13027.0",
+    "baseline": "exps/amzn_23_office-I50_None_wd/events.out.tfevents.1763788179.x1000c0s2b0n1.684447.0",
 }
 
 OUTPUT_DIR='./RESULTS'
