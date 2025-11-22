@@ -137,12 +137,15 @@ class LocalTextNegativesSampler(NegativesSampler):
         concat_mlp: torch.nn.Sequential = None,
         gate_layer: torch.nn.Linear = None,
         residual_mlp: torch.nn.Sequential = None,
+        weighted_sum_alpha: torch.nn.Parameter = None,
         # add Bi-Attention fusion
         cross_q_layer: torch.nn.Linear = None,
         cross_k_layer: torch.nn.Linear = None,
         cross_v_layer: torch.nn.Linear = None,
         final_fusion_mlp: torch.nn.Sequential = None,
         attention_dim: int = None,
+        # add Weighted sum fusion
+        use_sigmoid_alpha: bool = True
     ) -> None:
         super().__init__(l2_norm=l2_norm, l2_norm_eps=l2_norm_eps)
 
@@ -170,6 +173,10 @@ class LocalTextNegativesSampler(NegativesSampler):
              self._cross_v_layer = cross_v_layer
              self._final_fusion_mlp = final_fusion_mlp
              self.d_att = attention_dim
+
+        elif self._fusion_mode == "weighted_sum":
+            self.weighted_sum_alpha = weighted_sum_alpha
+            self._use_sigmoid_alpha = use_sigmoid_alpha
         
         
         device = item_emb.weight.device
@@ -279,10 +286,16 @@ class LocalTextNegativesSampler(NegativesSampler):
             # Reshape: (B*L, D_emb) -> (B, L, D_emb)
             fused_embeddings = fused_embeddings_flat.reshape(B, L, -1)
             #print('emb:', fused_embeddings.shape)
+        elif self._fusion_mode == "weighted_sum":
+            if self._use_sigmoid_alpha:
+                w = torch.sigmoid(self.weighted_sum_alpha)
+                fused_embeddings = w * item_embeds + (1.0 - w) * text_embeds
+            else:
+                fused_embeddings = self.weighted_sum_alpha * item_embeds + (1.0 - self.weighted_sum_alpha) * text_embeds
 
         elif self._fusion_mode == "no_fusion":
              fused_embeddings = item_embeds
-             
+
         else:
             raise ValueError(
                 f"Unknown fusion mode: {self._fusion_mode}. Supported modes are 'sum', 'concat_mlp', 'gated', 'resnet_mlp', 'no_fusion'."

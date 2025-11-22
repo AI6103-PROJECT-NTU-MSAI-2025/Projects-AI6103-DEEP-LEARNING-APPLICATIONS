@@ -136,6 +136,7 @@ def train_fn(
     text_embedding_model: str = None, # <- Here is the text embedding model mixed with the original HSTU
     fusion_mode: str = "sum", # the way you want to concat two embeddings ['sum','concat_mlp','gated']
     attention_dim: Optional[int] = 240, #<- used for bi-attn
+    use_sigmoid_alpha: bool = True,
     random_seed: int = 42,
 ) -> None:
     # to enable more deterministic results.
@@ -193,6 +194,7 @@ def train_fn(
             text_embeddings=dataset.text_embedding_dictmat.to("cuda"),
             fusion_mode=fusion_mode,
             attention_dim=current_attention_dim,
+            use_sigmoid_alpha=use_sigmoid_alpha
         )
     else:
         raise ValueError(f"Unknown embedding_module_type {embedding_module_type}")
@@ -310,6 +312,8 @@ def train_fn(
             cross_v_layer = getattr(model._embedding_module, '_cross_v_layer', None),
             final_fusion_mlp = getattr(model._embedding_module, '_final_fusion_mlp', None),
             attention_dim = getattr(model._embedding_module, 'd_att', None),
+            weighted_sum_alpha=getattr(model.module._embedding_module, 'weighted_sum_alpha', None),
+            use_sigmoid_alpha=getattr(model.module._embedding_module, '_use_sigmoid_alpha', None)
         )
     else:
         raise ValueError(f"Unrecognized sampling strategy {sampling_strategy}.")
@@ -460,6 +464,8 @@ def train_fn(
                     cross_v_layer = getattr(model.module._embedding_module, '_cross_v_layer', None),
                     final_fusion_mlp = getattr(model.module._embedding_module, '_final_fusion_mlp', None),
                     attention_dim = getattr(model.module._embedding_module, 'd_att', None),
+                    weighted_sum_alpha = getattr(model.module._embedding_module, 'weighted_sum_alpha', None),
+                    use_sigmoid_alpha = getattr(model.module._embedding_module, '_use_sigmoid_alpha', None)
                 ).to(model.device)
 
             ar_mask = supervision_ids[:, 1:] != 0

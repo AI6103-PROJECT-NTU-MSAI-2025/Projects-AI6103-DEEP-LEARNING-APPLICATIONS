@@ -119,6 +119,7 @@ class ItemEmbeddingWithText(EmbeddingModule):
         text_embeddings: torch.Tensor,
         fusion_mode: str = "sum",
         attention_dim: int = None, # dimension for D_att
+        use_sigmoid_alpha: bool = True
     ) -> None:
         """
         Embedding module that combines learned item embeddings with precomputed textual embeddings.
@@ -175,6 +176,9 @@ class ItemEmbeddingWithText(EmbeddingModule):
                 torch.nn.Linear(2 * self.d_att, item_embedding_dim),
                 torch.nn.ReLU(),
             )
+        elif self._fusion_mode == "weighted_sum":
+            self.weighted_sum_alpha = torch.nn.Parameter(torch.tensor(0.5, dtype=torch.float32))
+            self._use_sigmoid_alpha = use_sigmoid_alpha
             
         self.reset_params()
 
@@ -207,6 +211,10 @@ class ItemEmbeddingWithText(EmbeddingModule):
                 elif 'bias' in name:
                     # Q, K, V  Final MLP init bais
                     torch.nn.init.constant_(params.data, 0.0)
+
+            if "weighted_sum_alpha" in name:
+                print(f"Initialize {name} as scalar parameter")
+
             
 
     def get_item_embeddings(self, item_ids: torch.Tensor) -> torch.Tensor:
@@ -229,6 +237,12 @@ class ItemEmbeddingWithText(EmbeddingModule):
         if self._fusion_mode == "sum":
             # Summation Fusion
             fused_embeddings = item_embeds + projected_text_embeds
+
+        elif self._fusion_mode == "weighted_sum":
+            if self._use_sigmoid_alpha:
+                w = torch.sigmoid(self.weighted_sum_alpha)
+                return w * item_embeds + (1.0 - w) * projected_text_embeds
+            return self.weighted_sum_alpha * item_embeds + (1.0 - self.weighted_sum_alpha) * projected_text_embeds
             
         elif self._fusion_mode == "concat_mlp":
             # Concatenation and Projection, mlp fusion
