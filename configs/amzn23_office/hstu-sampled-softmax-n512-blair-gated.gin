@@ -1,18 +1,16 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
-#
-# Frozen config, validated on 04/12/2024.
-# Based on HSTU results (w/ identical configurations as a SotA Transformer baseline) in
-# Actions Speak Louder than Words: Trillion-Parameter Sequential Transducers for Generative Recommendations (https://arxiv.org/abs/2402.17152).
 
 train_fn.dataset_name = "amzn23_office"
 train_fn.max_sequence_length = 50
-train_fn.local_batch_size = 128
-train_fn.eval_batch_size = 128
+train_fn.local_batch_size = 512
+train_fn.eval_batch_size = 256
 
 train_fn.main_module = "HSTU"
-train_fn.embedding_module_type = "local"
-train_fn.feat_prep = "LearnablePositionalEmbeddingInputFeaturesPreprocessor"
-train_fn.sampling_strategy = "local"
+train_fn.embedding_module_type = "local_and_text"
+train_fn.feat_prep = "LearnablePositionalEmbeddingWithTextPreprocessor"
+train_fn.sampling_strategy = "local_with_text"
+train_fn.text_embedding_model = "blair"
+train_fn.fusion_mode = "gated"
 
 train_fn.dropout_rate = 0.5
 train_fn.user_embedding_norm = "l2_norm"
@@ -24,11 +22,11 @@ hstu_encoder.dv = 16
 hstu_encoder.dqk = 16
 hstu_encoder.linear_dropout_rate = 0.5
 
-train_fn.eval_interval = 1
+train_fn.eval_interval = 100
 train_fn.num_epochs = 101
 train_fn.learning_rate = 1e-3
-train_fn.weight_decay = 0
-train_fn.num_warmup_steps = 0
+train_fn.weight_decay = 1e-3
+train_fn.num_warmup_steps = 100
 
 train_fn.interaction_module_type = "DotProduct"
 train_fn.top_k_method = "MIPSBruteForceTopK"
@@ -46,4 +44,6 @@ train_fn.full_eval_every_n = 5
 train_fn.partial_eval_num_iters = 64
 
 create_data_loader.prefetch_factor = 1024
-create_data_loader.num_workers = 8
+create_data_loader.num_workers = 1
+
+# CUDA_VISIBLE_DEVICES=1 nohup python3 main.py --gin_config_file=configs/amzn23_office/hstu-sampled-softmax-n512-blair-gated.gin --master_port=12345 > train_office_gated.log 2>&1 &
