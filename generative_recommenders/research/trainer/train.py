@@ -119,7 +119,9 @@ def train_fn(
     temperature: float = 0.05,
     num_epochs: int = 101,
     learning_rate: float = 1e-3,
+    min_learning_rate: float = 1e-5,
     num_warmup_steps: int = 0,
+    lr_scheduler_type: str = "cosine",
     weight_decay: float = 1e-3,
     top_k_method: str = "MIPSBruteForceTopK",
     eval_interval: int = 100,
@@ -327,12 +329,36 @@ def train_fn(
         weight_decay=weight_decay,
     )
 
+    scheduler = None
+    scheduler_type = (lr_scheduler_type or "").lower()
+    try:
+        steps_per_epoch = len(train_data_loader)
+    except TypeError:
+        steps_per_epoch = None
+    if scheduler_type == "cosine" and steps_per_epoch is not None and steps_per_epoch > 0:
+        total_train_steps = max(1, steps_per_epoch * num_epochs - num_warmup_steps)
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+            opt,
+            T_max=total_train_steps,
+            eta_min=min_learning_rate,
+        )
+        logging.info(
+            f"Using cosine LR scheduler with T_max={total_train_steps}, eta_min={min_learning_rate}"
+        )
+    elif scheduler_type == "cosine":
+        logging.warning(
+            "Cosine LR scheduler requested but dataloader length is unavailable; using constant LR."
+        )
+
     date_str = date.today().strftime("%Y-%m-%d")
     model_subfolder = f"{dataset_name}-l{max_sequence_length}"
+    lr_desc = f"lr{learning_rate}"
+    if scheduler_type == "cosine" and scheduler is not None:
+        lr_desc += f"-cosmin{min_learning_rate}"
     model_desc = (
         f"{model_subfolder}"
         + f"/{model_debug_str}_{text_embedding_model}_{interaction_module_debug_str}_{sampling_debug_str}_{loss_debug_str}"
-        + f"{f'-ddp{world_size}' if world_size > 1 else ''}-b{local_batch_size}-lr{learning_rate}-wu{num_warmup_steps}-wd{weight_decay}{'' if enable_tf32 else '-notf32'}-{date_str}"
+        + f"{f'-ddp{world_size}' if world_size > 1 else ''}-b{local_batch_size}-{lr_desc}-wu{num_warmup_steps}-wd{weight_decay}{'' if enable_tf32 else '-notf32'}-{date_str}"
     )
     if full_eval_every_n > 1:
         model_desc += f"-fe{full_eval_every_n}"
@@ -476,9 +502,9 @@ def train_fn(
                 lr_scalar = min(1.0, float(batch_id + 1) / num_warmup_steps)
                 for pg in opt.param_groups:
                     pg["lr"] = lr_scalar * learning_rate
-                lr = lr_scalar * learning_rate
+                current_lr = lr_scalar * learning_rate
             else:
-                lr = learning_rate
+                current_lr = opt.param_groups[0]["lr"]
 
             if (batch_id % eval_interval) == 0:
                 logging.info(
@@ -489,9 +515,11 @@ def train_fn(
                 if rank == 0:
                     assert writer is not None
                     writer.add_scalar("loss/train", loss, batch_id)
-                    writer.add_scalar("lr", lr, batch_id)
+                    writer.add_scalar("lr", current_lr, batch_id)
 
             opt.step()
+            if scheduler is not None and batch_id >= num_warmup_steps:
+                scheduler.step()
 
             batch_id += 1
 
@@ -568,16 +596,16 @@ def train_fn(
                 metrics=eval_dict_all,
                 prefix="eval_epoch_full",
                 world_size=world_size,
-            )
+        )
         if rank == 0 and epoch > 0 and (epoch % save_ckpt_every_n) == 0:
-            torch.save(
-                {
-                    "epoch": epoch,
-                    "model_state_dict": model.state_dict(),
-                    "optimizer_state_dict": opt.state_dict(),
-                },
-                f"./ckpts/{model_desc}_ep{epoch}",
-            )
+            checkpoint = {
+                "epoch": epoch,
+                "model_state_dict": model.state_dict(),
+                "optimizer_state_dict": opt.state_dict(),
+            }
+            if scheduler is not None:
+                checkpoint["scheduler_state_dict"] = scheduler.state_dict()
+            torch.save(checkpoint, f"./ckpts/{model_desc}_ep{epoch}")
 
         logging.info(
             f"rank {rank}: eval @ epoch {epoch} in {time.time() - eval_start_time:.2f}s: "
@@ -590,13 +618,13 @@ def train_fn(
             writer.flush()
             writer.close()
 
-        torch.save(
-            {
-                "epoch": epoch,
-                "model_state_dict": model.state_dict(),
-                "optimizer_state_dict": opt.state_dict(),
-            },
-            f"./ckpts/{model_desc}_ep{epoch}",
-        )
+        checkpoint = {
+            "epoch": epoch,
+            "model_state_dict": model.state_dict(),
+            "optimizer_state_dict": opt.state_dict(),
+        }
+        if scheduler is not None:
+            checkpoint["scheduler_state_dict"] = scheduler.state_dict()
+        torch.save(checkpoint, f"./ckpts/{model_desc}_ep{epoch}")
 
     cleanup()
