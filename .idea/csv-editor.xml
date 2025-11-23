@@ -10,6 +10,13 @@
             </Attribute>
           </value>
         </entry>
+        <entry key="\RESULTS_512b_wd_lrs\test_results.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="," />
+            </Attribute>
+          </value>
+        </entry>
       </map>
     </option>
   </component>
