@@ -3,6 +3,8 @@ from tensorboard.backend.event_processing.event_accumulator import EventAccumula
 import matplotlib.pyplot as plt
 import sys
 import os
+from cycler import cycler
+
 
 def load_metric_data(file_path, selected_metrics):
     """Loads metrics from a single event file."""
@@ -31,7 +33,7 @@ def load_metric_data(file_path, selected_metrics):
 
     return data_frames, last_values
 
-def draw_curves_and_results(EXP_PATHS,OUTPUT_DIR,SMOOTHING_WINDOW,selected_metrics,metrics_title_dic):
+def draw_curves_and_results(EXP_PATHS,OUTPUT_DIR,SMOOTHING_WINDOW,selected_metrics,metrics_title_dic,COLOR_LIST):
     all_exp_data = {}
     all_last_values = {}
 
@@ -60,10 +62,10 @@ def draw_curves_and_results(EXP_PATHS,OUTPUT_DIR,SMOOTHING_WINDOW,selected_metri
 
         is_loss_metric = (metric == 'losses/ar_loss')
 
-        for name, dfs in all_exp_data.items():
+        for i, (name, dfs) in enumerate(all_exp_data.items()):
             if metric in dfs and dfs[metric] is not None and not dfs[metric].empty:
                 df = dfs[metric]
-                current_color = plt.gca()._get_lines.get_next_color()
+                current_color = COLOR_LIST[i % len(COLOR_LIST)]
                 if is_loss_metric:
                     ''' #print original value
                     plt.plot(df['step'], df['value'],
@@ -101,6 +103,7 @@ def draw_curves_and_results(EXP_PATHS,OUTPUT_DIR,SMOOTHING_WINDOW,selected_metri
 
 if __name__ == "__main__":
 
+
     EXP_PATHS_512b_wd_lr_scheduled = {
         "Sum": "exps/amzn23_office-l50-wd_lrd/HSTU-b4-h4-dqk16-dv16-lsilud0.5-ad0.0_blair_DotProduct_local_text-l2-eps1e-06_ssl-t0.05-n512-b512-lr0.001-cosmin1e-05-wu100-wd0.001-2025-11-23-fe5/events.out.tfevents.1763829841.x1000c0s4b0n1.1358792.0",
         "Weighted_sum":"exps/amzn23_office-l50-wd_lrd/amzn23_office-I50_weighted_sum_wd_lr/events.out.tfevents.1763833030.I252664a0bd0060187d.1980.0",
@@ -135,5 +138,8 @@ if __name__ == "__main__":
     'eval_epoch_full/mrr': 'MRR',
     }
 
-    draw_curves_and_results(EXP_PATHS_128b_wd, OUTPUT_DIR_128b_wd, SMOOTHING_WINDOW, selected_metrics, metrics_title_dic)
-    draw_curves_and_results(EXP_PATHS_512b_wd_lr_scheduled, OUTPUT_DIR_512b_wd_lrs, SMOOTHING_WINDOW, selected_metrics, metrics_title_dic)
+    my_colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b',
+                 '#e377c2', '#7f7f7f', '#bcbd22', '#17becf', '#4e79a7', '#f28e2b']
+
+    draw_curves_and_results(EXP_PATHS_128b_wd, OUTPUT_DIR_128b_wd, SMOOTHING_WINDOW, selected_metrics, metrics_title_dic,my_colors)
+    draw_curves_and_results(EXP_PATHS_512b_wd_lr_scheduled, OUTPUT_DIR_512b_wd_lrs, SMOOTHING_WINDOW, selected_metrics, metrics_title_dic,my_colors)
