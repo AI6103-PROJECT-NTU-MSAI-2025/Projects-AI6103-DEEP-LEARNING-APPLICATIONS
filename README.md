@@ -1,7 +1,6 @@
 ### 🚀 Getting Started
 
 Install the required Python packages with ```pip3 install -r requirements.txt```.
----
 
 ### 🧪 Experiments
 
@@ -12,8 +11,6 @@ To reproduce the experiments, follow these steps:
 ```bash
 mkdir -p tmp/ && python3 preprocess_public_data.py
 ```
-
-Make sure you have correctly set up your OpenAI API credentials if you choose this option.
 
 
 #### 2. Run the model
