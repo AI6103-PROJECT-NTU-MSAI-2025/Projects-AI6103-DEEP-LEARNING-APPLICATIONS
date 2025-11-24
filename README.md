@@ -8,6 +8,11 @@ The model was trained on a single RTX 4090 GPU.
 A single training run of 100 epochs takes approximately 7 hours.
 Please refer to requirements.txt for the environment configuration.
 
+Before training, use the following command to prepare the data and BLair embedding.
+```bash 
+mkdir -p tmp/ && python3 preprocess_public_data.py
+```
+
 To start the training, please run the following command.
 ```bash 
 python main.py --gin_config_file=configs/amzn23_office/hstu-sampled-softmax-n512-blair.gin --master_port=12345
