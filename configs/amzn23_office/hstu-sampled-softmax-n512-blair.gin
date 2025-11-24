@@ -10,7 +10,7 @@ train_fn.embedding_module_type = "local_and_text"
 train_fn.feat_prep = "LearnablePositionalEmbeddingWithTextPreprocessor"
 train_fn.sampling_strategy = "local_with_text"
 train_fn.text_embedding_model = "blair"
-train_fn.fusion_mode = "bi_attention"
+train_fn.fusion_mode = "sum"
 
 train_fn.dropout_rate = 0.5
 train_fn.user_embedding_norm = "l2_norm"

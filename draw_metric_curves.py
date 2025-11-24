@@ -90,7 +90,7 @@ def draw_curves_and_results(EXP_PATHS,OUTPUT_DIR,SMOOTHING_WINDOW,selected_metri
         plt.legend()
         plt.grid(True)
 
-        filename = os.path.join(OUTPUT_DIR, f"{metric.replace('/', '_')}_comparison.png")
+        filename = os.path.join(OUTPUT_DIR, f"{metric.replace('/', '_')}_comparison.svg")
         plt.savefig(filename)
         print(f"Saved plot: {filename}")
         # plt.show()
@@ -109,7 +109,7 @@ if __name__ == "__main__":
         "Weighted_sum":"exps/amzn23_office-l50-wd_lrd/amzn23_office-I50_weighted_sum_wd_lr/events.out.tfevents.1763833030.I252664a0bd0060187d.1980.0",
         "Gated": "exps/amzn23_office-l50-wd_lrd/HSTU-b4-h4-dqk16-dv16-lsilud0.5-ad0.0_gated_DotProduct_local_text-l2-eps1e-06_ssl-t0.05-n512-b512-lr0.001-cosmin1e-05-wu100-wd0.001-2025-11-23-fe5/events.out.tfevents.1763829228.x1000c0s4b0n1.1341390.0",
         "Resnet": "exps/amzn23_office-l50-wd_lrd/HSTU-b4-h4-dqk16-dv16-lsilud0.5-ad0.0_resnet_mlp_DotProduct_local_text-l2-eps1e-06_ssl-t0.05-n512-b512-lr0.001-cosmin1e-05-wu100-wd0.001-2025-11-22-fe5/events.out.tfevents.1763826890.x1000c0s2b0n1.1277715.0",
-        "FFNN": "exps/amzn23_office-l50-wd_lrd/HSTU-b4-h4-dqk16-dv16-lsilud0.5-ad0.0_concat_DotProduct_local_text-l2-eps1e-06_ssl-t0.05-n512-b512-lr0.001-cosmin1e-05-wu100-wd0.001-2025-11-23-fe5/events.out.tfevents.1763873554.x1000c0s4b0n1.2256998.0",
+        "MLP": "exps/amzn23_office-l50-wd_lrd/HSTU-b4-h4-dqk16-dv16-lsilud0.5-ad0.0_concat_DotProduct_local_text-l2-eps1e-06_ssl-t0.05-n512-b512-lr0.001-cosmin1e-05-wu100-wd0.001-2025-11-23-fe5/events.out.tfevents.1763873554.x1000c0s4b0n1.2256998.0",
         "Baseline": "exps/amzn23_office-l50-wd_lrd/HSTU-b4-h4-dqk16-dv16-lsilud0.5-ad0.0_baseline_DotProduct_local-l2-eps1e-06_ssl-t0.05-n512-b512-lr0.001-cosmin1e-05-wu100-wd0.001-2025-11-23-fe5/events.out.tfevents.1763828989.x1000c0s4b0n1.1336929.0",
     }
 
@@ -118,7 +118,7 @@ if __name__ == "__main__":
         "Weighted_sum":"exps/amzn23_office-l50-wd_only/amzn23_office-I50_weighted_sum_wd/events.out.tfevents.1763805572.I25292188ad00b01dab.2529.0",
         "Gated": "exps/amzn23_office-l50-wd_only/amzn_23_office-I50_gated_wd/events.out.tfevents.1763705763.autodl-container-828249b609-a2deb705.1392.0",
         "Resnet": "exps/amzn23_office-l50-wd_only/amzn_23_office-I50_resnet_wd/events.out.tfevents.1763711526.x1000c0s1b0n1.3606124.0",
-        "FFNN": "exps/amzn23_office-l50-wd_only/amzn23_office-I50_concat_mlp_wd/events.out.tfevents.1763753549.I252664a0bd0060187d.13027.0",
+        "MLP": "exps/amzn23_office-l50-wd_only/amzn23_office-I50_concat_mlp_wd/events.out.tfevents.1763753549.I252664a0bd0060187d.13027.0",
         "Baseline": "exps/amzn23_office-l50-wd_only/amzn_23_office-I50_None_wd/events.out.tfevents.1763788179.x1000c0s2b0n1.684447.0",
     }
 
