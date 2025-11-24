@@ -1,6 +1,6 @@
 ### 🚀 Getting Started
 
-Install the required Python packages with ```pip3 install -r requirements.txt```.
+Install the required Python(3.10) packages with ```pip3 install -r requirements.txt```.
 
 ### 🧪 Experiments
 
