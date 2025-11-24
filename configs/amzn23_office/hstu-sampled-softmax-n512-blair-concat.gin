@@ -45,5 +45,3 @@ train_fn.partial_eval_num_iters = 64
 
 create_data_loader.prefetch_factor = 1024
 create_data_loader.num_workers = 1
-
-# CUDA_VISIBLE_DEVICES=2,3 nohup python3 main.py --gin_config_file=configs/amzn23_office/hstu-sampled-softmax-n512-blair-concat.gin --master_port=12349 > train_office_concat.log 2>&1 &

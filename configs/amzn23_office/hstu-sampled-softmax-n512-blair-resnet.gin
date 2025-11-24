@@ -45,6 +45,3 @@ train_fn.partial_eval_num_iters = 64
 
 create_data_loader.prefetch_factor = 1024
 create_data_loader.num_workers = 1
-
-# CUDA_VISIBLE_DEVICES=0 nohup python3 main.py --gin_config_file=configs/amzn23_office/hstu-sampled-softmax-n512-blair-resnet.gin --master_port=12345 > train_office_resnet_mlp.log 2>&1 &
-    
